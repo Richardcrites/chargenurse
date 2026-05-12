@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Charge Board</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f0f3f8; --surface:#fff; --surface2:#e8edf5; --border:#d4dce8;
+    --text:#1a2336; --muted:#7a8fa8; --muted2:#b0bfcf;
+    --green:#16a34a; --green-bg:#f0fdf4; --green-border:#bbf7d0;
+    --blue:#2563eb;  --blue-bg:#eff6ff;  --blue-border:#bfdbfe;
+    --amber:#d97706; --amber-bg:#fffbeb; --amber-border:#fde68a;
+    --purple:#7c3aed;--purple-bg:#f5f3ff;--purple-border:#ddd6fe;
+    --red:#dc2626;   --red-bg:#fef2f2;   --red-border:#fecaca;
+    --shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+    --shadow-md:0 4px 16px rgba(0,0,0,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;-webkit-font-smoothing:antialiased;}
+
+  /* HEADER */
+  .header{background:var(--surface);border-bottom:2px solid var(--border);padding:12px 18px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow);position:sticky;top:0;z-index:200;}
+  .header-left{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .header-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .clinic-name{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:var(--muted);}
+  .board-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.02em;}
+  .clock-small{font-size:13px;color:var(--muted);letter-spacing:.04em;font-variant-numeric:tabular-nums;}
+  .tabs{display:flex;gap:3px;background:var(--bg);border-radius:7px;padding:3px;}
+  .tab-btn{padding:7px 16px;border-radius:5px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.05em;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:all .15s;touch-action:manipulation;}
+  .tab-btn.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow);}
+  .fb-status{display:flex;align-items:center;gap:5px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted2);}
+  .fb-dot{width:7px;height:7px;border-radius:50%;background:var(--muted2);transition:background .3s;flex-shrink:0;}
+  .fb-dot.live{background:var(--green);box-shadow:0 0 6px var(--green);}
+  .fb-dot.error{background:var(--red);}
+
+  /* CONTENT */
+  .content{padding:14px 18px;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  /* COL HEADERS */
+  .col-headers{display:grid;grid-template-columns:72px 1fr 120px 120px 170px 160px;gap:0;padding-bottom:5px;}
+  .col-h{font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted2);padding:2px 10px;font-weight:500;}
+
+  /* ROOM GRID */
+  .room-grid{display:flex;flex-direction:column;gap:5px;}
+  .room-row{display:grid;grid-template-columns:72px 1fr;background:var(--surface);border-radius:10px;box-shadow:var(--shadow);overflow:hidden;min-height:72px;transition:box-shadow .15s;}
+  .room-row:hover{box-shadow:var(--shadow-md);}
+  .room-row.is-surgery{border-left:4px solid var(--purple);}
+
+  /* Room label */
+  .room-label{display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--surface2);border-right:2px solid var(--border);padding:8px 6px;flex-shrink:0;}
+  .room-num{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--text);line-height:1;}
+  .room-word{font-size:7px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-top:2px;}
+  .surg-badge{font-size:7px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:var(--purple);background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:3px;padding:1px 4px;margin-top:4px;}
+
+  /* Room content */
+  .room-content{display:flex;align-items:stretch;width:100%;overflow:hidden;}
+
+  /* Available */
+  .room-avail{display:flex;align-items:center;padding:0 18px;width:100%;gap:12px;}
+  .avail-pill{display:inline-flex;align-items:center;gap:6px;background:var(--green-bg);color:var(--green);border:1.5px solid var(--green-border);border-radius:20px;padding:5px 14px;font-size:11px;font-weight:500;letter-spacing:.04em;}
+  .avail-pill::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);}
+
+  /* Occupied room cells */
+  .room-cells{display:grid;grid-template-columns:1fr 120px 120px 170px 160px;align-items:stretch;width:100%;}
+  .rcell{padding:10px 10px;border-right:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;cursor:pointer;transition:background .12s;touch-action:manipulation;min-width:0;}
+  .rcell:last-child{border-right:none;cursor:default;}
+  .rcell:active{background:rgba(37,99,235,.05);}
+  .rcell:hover{background:#f7f9ff;}
+  .rcell.no-tap{cursor:default;}
+  .rcell.no-tap:hover{background:transparent;}
+  .rcell-label{font-size:8px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted2);margin-bottom:4px;font-weight:500;display:flex;align-items:center;justify-content:space-between;}
+  .edit-icon{font-size:10px;opacity:0;transition:opacity .15s;}
+  .rcell:hover .edit-icon{opacity:.6;}
+  .rcell-val{font-size:12px;color:var(--text);line-height:1.3;font-weight:500;}
+  .rcell-empty{font-size:11px;color:var(--muted2);font-style:italic;}
+  .rcell-ts{font-size:8px;color:var(--muted2);margin-top:3px;}
+
+  /* Patient cell */
+  .pt-name{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pt-owner{font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.04em;}
+  .pt-reason{font-size:9px;color:var(--muted);margin-top:1px;}
+  .pt-badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:8px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;margin-top:4px;}
+  .b-fel{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);}
+  .b-k9{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+
+  /* Estimate select */
+  .est-sel{appearance:none;-webkit-appearance:none;border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;padding:5px 22px 5px 8px;cursor:pointer;outline:none;border:1.5px solid;width:100%;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%237a8fa8'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;transition:all .15s;touch-action:manipulation;}
+  .ep{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border);}
+  .ei{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border);}
+  .es{background:var(--green-bg);color:var(--green);border-color:var(--green-border);}
+  .eu{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border);}
+
+  /* Actions */
+  .actions-cell{display:flex;flex-direction:column;gap:5px;justify-content:center;padding:8px 10px;}
+  .btn-a{display:inline-flex;align-items:center;gap:4px;justify-content:center;border-radius:6px;padding:6px 8px;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;transition:all .15s;font-weight:500;border:1.5px solid;white-space:nowrap;touch-action:manipulation;}
+  .btn-dis{background:var(--red-bg);color:var(--red);border-color:var(--red-border);}
+  .btn-dis:active,.btn-dis:hover{background:var(--red);color:#fff;}
+  .btn-asgn{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-border);margin-left:auto;}
+  .btn-asgn:active,.btn-asgn:hover{background:var(--blue);color:#fff;}
+
+  /* SLIDE-UP SHEETS */
+  .sheet-overlay{position:fixed;inset:0;background:rgba(15,25,45,.4);display:flex;align-items:flex-end;justify-content:center;z-index:500;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .sheet-overlay.open{opacity:1;pointer-events:all;}
+  .sheet{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:18px 20px 36px;transform:translateY(100%);transition:transform .25s cubic-bezier(.32,.72,0,1);box-shadow:0 -8px 40px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto;}
+  .sheet-overlay.open .sheet{transform:translateY(0);}
+  .sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 14px;}
+  .sheet-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:14px;color:var(--text);}
+  .sheet-sub{font-size:10px;color:var(--muted);margin-top:-10px;margin-bottom:14px;}
+
+  /* Form elements */
+  .fg{margin-bottom:14px;}
+  .fg label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:5px;display:block;}
+  .fi{background:#f8fafc;border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:15px;padding:11px 13px;outline:none;width:100%;transition:border-color .15s;-webkit-appearance:none;}
+  .fi:focus{border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.08);}
+  .fi-hint{font-size:10px;color:var(--muted2);margin-top:5px;}
+  .seg{display:flex;background:var(--surface2);border-radius:8px;padding:3px;gap:3px;}
+  .seg-b{flex:1;padding:9px;border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:all .15s;text-align:center;font-weight:500;touch-action:manipulation;}
+  .seg-b.on{background:#fff;color:var(--text);box-shadow:var(--shadow);}
+  .sheet-btns{display:flex;gap:8px;margin-top:16px;}
+  .s-btn{flex:1;padding:13px;border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;border:none;transition:all .15s;font-weight:500;touch-action:manipulation;}
+  .s-save{background:var(--blue);color:#fff;}
+  .s-save:active{background:#1d4ed8;}
+  .s-cancel{background:var(--surface2);color:var(--muted);}
+  .s-cancel:active{background:var(--border);}
+
+  /* Discharge options */
+  .dis-opts{display:flex;flex-direction:column;gap:10px;}
+  .dis-opt{width:100%;padding:14px 18px;border-radius:10px;font-family:'DM Mono',monospace;font-size:13px;cursor:pointer;border:1.5px solid;transition:all .15s;font-weight:500;text-align:left;display:flex;align-items:center;gap:10px;touch-action:manipulation;}
+  .dis-opt-dis{background:var(--red-bg);color:var(--red);border-color:var(--red-border);}
+  .dis-opt-dis:active{background:var(--red);color:#fff;}
+  .dis-opt-surg{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-border);}
+  .dis-opt-surg:active{background:var(--purple);color:#fff;}
+  .dis-opt-cancel{background:var(--surface2);color:var(--muted);border-color:var(--border);}
+  .dis-opt-cancel:active{background:var(--border);}
+  .dis-icon{font-size:18px;}
+
+  /* LOG */
+  .log-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px;}
+  .log-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;}
+  .log-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+  .btn-clear{background:transparent;border:1.5px solid var(--border);border-radius:6px;padding:7px 14px;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);cursor:pointer;flex-shrink:0;touch-action:manipulation;}
+  .btn-clear:active{border-color:var(--red);color:var(--red);}
+  .log-cards{display:flex;flex-direction:column;gap:8px;}
+  .log-card{background:var(--surface);border-radius:10px;box-shadow:var(--shadow);padding:14px 16px;border-left:4px solid var(--border);}
+  .log-card.surg{border-left-color:var(--purple);}
+  .lc-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+  .lc-name{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;}
+  .lc-room{font-size:10px;color:var(--muted);margin-top:2px;}
+  .lc-badge{font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;padding:2px 8px;border-radius:4px;}
+  .lc-badge.surg{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border);}
+  .lc-badge.dis{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+  .lc-meta{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;}
+  .lc-mi{font-size:10px;color:var(--muted);}
+  .lc-mi strong{color:var(--text);}
+  .lc-tl{border-top:1px solid var(--border);padding-top:8px;margin-top:4px;}
+  .lc-tl-lbl{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted2);margin-bottom:5px;font-weight:500;}
+  .tl-item{display:flex;align-items:baseline;gap:7px;font-size:10px;color:var(--muted);margin-bottom:2px;}
+  .tl-dot{width:5px;height:5px;border-radius:50%;background:var(--muted2);flex-shrink:0;margin-top:2px;}
+  .tl-item strong{color:var(--text);}
+  .log-empty{text-align:center;padding:48px;color:var(--muted2);font-size:11px;letter-spacing:.1em;text-transform:uppercase;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div>
+      <div class="clinic-name">Dallas Animal Urgency</div>
+      <div class="board-title">Charge Board</div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('board')">Active Rooms</button>
+      <button class="tab-btn"        onclick="switchTab('log')">Log</button>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="fb-status"><div class="fb-dot" id="fb-dot"></div><span id="fb-label">…</span></div>
+    <div class="clock-small" id="clock"></div>
+  </div>
+</div>
+
+<div class="content">
+  <!-- BOARD -->
+  <div class="tab-panel active" id="panel-board">
+    <div class="col-headers">
+      <div class="col-h"></div>
+      <div class="col-h">Patient</div>
+      <div class="col-h">Doctor</div>
+      <div class="col-h">Tech</div>
+      <div class="col-h">Estimate</div>
+      <div class="col-h">Actions</div>
+    </div>
+    <div class="room-grid" id="room-grid"></div>
+  </div>
+
+  <!-- LOG -->
+  <div class="tab-panel" id="panel-log">
+    <div class="log-hdr">
+      <div><div class="log-title">Patient Log</div><div class="log-sub">Discharged &amp; converted patients with full timeline</div></div>
+      <button class="btn-clear" onclick="clearLog()">Clear Log</button>
+    </div>
+    <div class="log-cards" id="log-cards"></div>
+    <div class="log-empty" id="log-empty">No entries yet</div>
+  </div>
+</div>
+
+<!-- CELL EDIT SHEET -->
+<div class="sheet-overlay" id="cellOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="cell-title">Edit</div>
+    <div class="sheet-sub"   id="cell-sub"></div>
+    <div id="cell-body"></div>
+    <div class="sheet-btns">
+      <button class="s-btn s-cancel" onclick="closeSheet('cellOverlay')">Cancel</button>
+      <button class="s-btn s-save"   onclick="saveCellEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- DISCHARGE SHEET -->
+<div class="sheet-overlay" id="disOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="dis-name"></div>
+    <div class="sheet-sub"   id="dis-room-lbl"></div>
+    <div class="dis-opts">
+      <button class="dis-opt dis-opt-dis"    onclick="doDischarge('discharge')"><span class="dis-icon">🏠</span> Discharge — patient going home</button>
+      <button class="dis-opt dis-opt-surg"   onclick="doDischarge('surgery')"><span class="dis-icon">🔪</span> Convert to Surgery</button>
+      <button class="dis-opt dis-opt-cancel" onclick="closeSheet('disOverlay')"><span class="dis-icon">✕</span> Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- PATIENT SHEET -->
+<div class="sheet-overlay" id="ptOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="pt-title">Assign Patient</div>
+    <div class="fg"><label>Patient Name *</label><input class="fi" id="pt-name" placeholder="e.g. Buddy Cox" autocomplete="off" autocorrect="off" /></div>
+    <div class="fg"><label>Owner Last Name</label><input class="fi" id="pt-owner" placeholder="e.g. Cox" autocomplete="off" autocorrect="off" /></div>
+    <div class="fg">
+      <label>Species</label>
+      <div class="seg">
+        <button class="seg-b on" id="seg-k9"  onclick="pickSp('K9')">🐶 K9</button>
+        <button class="seg-b"    id="seg-fel" onclick="pickSp('Fel')">🐱 Feline</button>
+      </div>
+    </div>
+    <div class="fg"><label>Reason for Visit</label><input class="fi" id="pt-reason" placeholder="e.g. Pancreatitis" autocomplete="off" autocorrect="off" /></div>
+    <div class="fg">
+      <label>Initial Estimate</label>
+      <select class="fi" id="pt-est" style="font-size:14px;">
+        <option value="pending">⏳ Pending</option>
+        <option value="progress">📝 In Progress</option>
+        <option value="signed">✅ Signed</option>
+        <option value="updated">🔄 Updated</option>
+      </select>
+    </div>
+    <div class="sheet-btns">
+      <button class="s-btn s-cancel" onclick="closeSheet('ptOverlay')">Cancel</button>
+      <button class="s-btn s-save"   onclick="savePt()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp }                                   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, remove, push }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── FIREBASE ──────────────────────────────────────────────────
+const FB_CFG = {
+  apiKey:"AIzaSyCbl74uize74FPXrsmX3-kEftbyx3h5pWA",
+  authDomain:"chargenurse-610c9.firebaseapp.com",
+  projectId:"chargenurse-610c9",
+  databaseURL:"https://chargenurse-610c9-default-rtdb.firebaseio.com",
+  storageBucket:"chargenurse-610c9.firebasestorage.app",
+  messagingSenderId:"594902619971",
+  appId:"1:594902619971:web:2edde9161e8d4c4fcb01f6"
+};
+
+let db=null, fbOK=false;
+function dbSet(p,d){if(db)set(ref(db,p),d);}
+function dbDel(p){if(db)remove(ref(db,p));}
+function dbPush(p,d){if(db)push(ref(db,p),d);}
+
+// ── STATE ─────────────────────────────────────────────────────
+const ROOMS=[1,2,3,4,5,6,7,8,9,10];
+let rooms={}, logEntries=[];
+let cellState={}, disRoom=null, ptRoom=null, ptSp='K9';
+
+// ── INIT ──────────────────────────────────────────────────────
+try {
+  const app=initializeApp(FB_CFG);
+  db=getDatabase(app);
+  fbOK=true;
+  document.getElementById('fb-dot').className='fb-dot live';
+  document.getElementById('fb-label').textContent='Live';
+
+  onValue(ref(db,'cb2/rooms'), snap=>{ rooms=snap.val()||{}; renderGrid(); });
+  onValue(ref(db,'cb2/log'),   snap=>{
+    const r=snap.val();
+    logEntries=r?Object.values(r).sort((a,b)=>b.loggedAt-a.loggedAt):[];
+    renderLog();
+  });
+} catch(e) {
+  console.error(e);
+  document.getElementById('fb-dot').className='fb-dot error';
+  document.getElementById('fb-label').textContent='Offline';
+  loadLocal(); renderGrid(); renderLog();
+}
+
+function loadLocal(){try{const s=localStorage.getItem('cb2_v1');if(s){const p=JSON.parse(s);rooms=p.rooms||{};logEntries=p.log||[];}}catch(e){}}
+function saveLocal(){if(fbOK)return;localStorage.setItem('cb2_v1',JSON.stringify({rooms,log:logEntries}));}
+function persist(n){if(fbOK)dbSet('cb2/rooms/'+n,rooms[n]);else saveLocal();}
+
+// ── RENDER GRID ───────────────────────────────────────────────
+window.renderGrid=function(){
+  const g=document.getElementById('room-grid');
+  g.innerHTML='';
+  ROOMS.forEach(n=>{
+    const p=rooms[n]||null;
+    const row=document.createElement('div');
+    row.className='room-row'+(p&&p.isSurgery?' is-surgery':'');
+
+    const lbl=`<div class="room-label">
+      <div class="room-num">${n}</div>
+      <div class="room-word">Room</div>
+      ${p&&p.isSurgery?'<div class="surg-badge">Surgery</div>':''}
+    </div>`;
+
+    if(!p){
+      row.innerHTML=lbl+`<div class="room-content"><div class="room-avail">
+        <span class="avail-pill">Available</span>
+        <button class="btn-a btn-asgn" onclick="openPt(${n})">+ Assign Patient</button>
+      </div></div>`;
+    } else {
+      const ec=eC(p.estStatus);
+      row.innerHTML=lbl+`<div class="room-content"><div class="room-cells">
+
+        <!-- Patient -->
+        <div class="rcell" onclick="openPt(${n})">
+          <div class="rcell-label">Patient <span class="edit-icon">✏</span></div>
+          <div class="pt-name">${esc(p.name||'')}</div>
+          ${p.owner?`<div class="pt-owner">${esc(p.owner)}</div>`:''}
+          ${p.reason?`<div class="pt-reason">${esc(p.reason)}</div>`:''}
+          <span class="pt-badge ${p.species==='Fel'?'b-fel':'b-k9'}">${esc(p.species||'K9')}</span>
+          <div class="rcell-ts">${p.admittedAt?'In '+fmtTime(p.admittedAt):''}</div>
+        </div>
+
+        <!-- Doctor -->
+        <div class="rcell" onclick="openCell(${n},'doctor')">
+          <div class="rcell-label">Doctor <span class="edit-icon">✏</span></div>
+          ${p.doctor
+            ?`<div class="rcell-val">${esc(p.doctor)}</div><div class="rcell-ts">${fmtTime(p.doctorAt)}</div>`
+            :`<div class="rcell-empty">Tap to assign</div>`}
+        </div>
+
+        <!-- Tech -->
+        <div class="rcell" onclick="openCell(${n},'tech')">
+          <div class="rcell-label">Tech <span class="edit-icon">✏</span></div>
+          ${p.tech
+            ?`<div class="rcell-val">${esc(p.tech)}</div><div class="rcell-ts">${fmtTime(p.techAt)}</div>`
+            :`<div class="rcell-empty">Tap to assign</div>`}
+        </div>
+
+        <!-- Estimate -->
+        <div class="rcell no-tap">
+          <div class="rcell-label">Estimate</div>
+          <select class="est-sel ${ec}" onchange="updateEst(${n},this.value,this)">
+            <option value="pending"  ${p.estStatus==='pending' ?'selected':''}>⏳ Pending</option>
+            <option value="progress" ${p.estStatus==='progress'?'selected':''}>📝 In Progress</option>
+            <option value="signed"   ${p.estStatus==='signed'  ?'selected':''}>✅ Signed</option>
+            <option value="updated"  ${p.estStatus==='updated' ?'selected':''}>🔄 Updated</option>
+          </select>
+          ${p.estUpdatedAt?`<div class="rcell-ts">${fmtTime(p.estUpdatedAt)}</div>`:''}
+        </div>
+
+        <!-- Actions -->
+        <div class="rcell no-tap" style="cursor:default;">
+          <div class="actions-cell">
+            <button class="btn-a btn-dis" onclick="openDis(${n})">🏠 Discharge / 🔪 Surgery</button>
+          </div>
+        </div>
+
+      </div></div>`;
+    }
+    g.appendChild(row);
+  });
+};
+
+// ── ESTIMATE ──────────────────────────────────────────────────
+window.updateEst=function(n,v,el){
+  if(!rooms[n])return;
+  const now=Date.now();
+  rooms[n].estStatus=v; rooms[n].estUpdatedAt=now;
+  addHist(n,'Estimate',eLabel(v),now);
+  el.className='est-sel '+eC(v);
+  const cell=el.closest('.rcell');
+  if(cell){let t=cell.querySelector('.rcell-ts');if(!t){t=document.createElement('div');t.className='rcell-ts';cell.appendChild(t);}t.textContent=fmtTime(now);}
+  persist(n);
+};
+
+// ── CELL EDIT (Doctor / Tech) ─────────────────────────────────
+window.openCell=function(n,field){
+  cellState={n,field};
+  const p=rooms[n]||{};
+  const labels={doctor:'Doctor',tech:'Tech'};
+  const cur=p[field]||'';
+  document.getElementById('cell-title').textContent=`Assign ${labels[field]} — Room ${n}`;
+  document.getElementById('cell-sub').textContent='Time will be recorded automatically';
+  document.getElementById('cell-body').innerHTML=
+    `<input class="fi" id="cell-val" value="${esc(cur)}" placeholder="Initials or name"
+      autocomplete="off" autocorrect="off" autocapitalize="characters" />`;
+  openSheet('cellOverlay');
+  setTimeout(()=>document.getElementById('cell-val')?.focus(),320);
+};
+
+window.saveCellEdit=function(){
+  const {n,field}=cellState;
+  if(!rooms[n])return;
+  const val=(document.getElementById('cell-val')?.value||'').trim().toUpperCase();
+  const now=Date.now();
+  rooms[n][field]=val; rooms[n][field+'At']=now;
+  addHist(n,field==='doctor'?'Doctor':'Tech',val||'(cleared)',now);
+  persist(n);
+  closeSheet('cellOverlay');
+};
+
+// ── PATIENT SHEET ─────────────────────────────────────────────
+window.openPt=function(n){
+  ptRoom=n;
+  const p=rooms[n]||null;
+  document.getElementById('pt-title').textContent=(p?'Edit Patient':'Assign Patient')+' — Room '+n;
+  document.getElementById('pt-name').value  =p?p.name||''  :'';
+  document.getElementById('pt-owner').value =p?p.owner||'' :'';
+  document.getElementById('pt-reason').value=p?p.reason||'':'';
+  document.getElementById('pt-est').value   =p?p.estStatus||'pending':'pending';
+  pickSp(p?p.species||'K9':'K9');
+  openSheet('ptOverlay');
+  setTimeout(()=>document.getElementById('pt-name')?.focus(),320);
+};
+
+window.savePt=function(){
+  const name=document.getElementById('pt-name').value.trim();
+  if(!name){document.getElementById('pt-name').focus();return;}
+  const ex=rooms[ptRoom]||{};
+  const now=Date.now();
+  const p={...ex,name,
+    owner:document.getElementById('pt-owner').value.trim(),
+    species:ptSp,
+    reason:document.getElementById('pt-reason').value.trim(),
+    estStatus:document.getElementById('pt-est').value,
+    admittedAt:ex.admittedAt||now,
+    history:ex.history||[],
+    doctor:ex.doctor||'', doctorAt:ex.doctorAt||null,
+    tech:ex.tech||'',     techAt:ex.techAt||null,
+    estUpdatedAt:ex.estUpdatedAt||null,
+  };
+  if(!ex.admittedAt) p.history.push({label:'Admitted',value:name,at:now});
+  rooms[ptRoom]=p;
+  if(fbOK)dbSet('cb2/rooms/'+ptRoom,p);else{saveLocal();renderGrid();}
+  closeSheet('ptOverlay');
+};
+
+window.pickSp=function(v){
+  ptSp=v;
+  document.getElementById('seg-k9').classList.toggle('on',v==='K9');
+  document.getElementById('seg-fel').classList.toggle('on',v==='Fel');
+};
+
+// ── DISCHARGE / SURGERY ───────────────────────────────────────
+window.openDis=function(n){
+  const p=rooms[n];if(!p)return;
+  disRoom=n;
+  document.getElementById('dis-name').textContent=p.name||'Patient';
+  document.getElementById('dis-room-lbl').textContent='Room '+n+(p.reason?' · '+p.reason:'');
+  openSheet('disOverlay');
+};
+
+window.doDischarge=function(type){
+  const p=rooms[disRoom];if(!p)return;
+  const now=Date.now();
+  const label=type==='surgery'?'Converted to Surgery':'Discharged';
+  p.history=p.history||[];
+  p.history.push({label,value:'',at:now});
+  const entry={...p,roomNum:disRoom,loggedAt:now,logType:type,isSurgery:type==='surgery'};
+  logEntries.unshift(entry);
+  if(fbOK){dbDel('cb2/rooms/'+disRoom);dbPush('cb2/log',entry);}
+  else{delete rooms[disRoom];saveLocal();renderGrid();renderLog();}
+  closeSheet('disOverlay');
+};
+
+// ── LOG ───────────────────────────────────────────────────────
+window.renderLog=function(){
+  const cards=document.getElementById('log-cards');
+  const empty=document.getElementById('log-empty');
+  cards.innerHTML='';
+  empty.style.display=logEntries.length?'none':'block';
+  logEntries.forEach(p=>{
+    const iS=p.logType==='surgery';
+    const card=document.createElement('div');
+    card.className='log-card'+(iS?' surg':'');
+    card.innerHTML=`
+      <div class="lc-hdr">
+        <div>
+          <div class="lc-name">${esc(p.name||'Unknown')}</div>
+          <div class="lc-room">Room ${p.roomNum||'?'}${p.owner?' · '+esc(p.owner):''}${p.species?' · '+esc(p.species):''}</div>
+        </div>
+        <span class="lc-badge ${iS?'surg':'dis'}">${iS?'Surgery':'Discharged'}</span>
+      </div>
+      <div class="lc-meta">
+        ${p.doctor?`<div class="lc-mi"><strong>Doctor:</strong> ${esc(p.doctor)}</div>`:''}
+        ${p.tech?`<div class="lc-mi"><strong>Tech:</strong> ${esc(p.tech)}</div>`:''}
+        ${p.reason?`<div class="lc-mi"><strong>Reason:</strong> ${esc(p.reason)}</div>`:''}
+        ${p.estStatus?`<div class="lc-mi"><strong>Final Est:</strong> ${eLabel(p.estStatus)}</div>`:''}
+        <div class="lc-mi"><strong>${iS?'Converted':'Discharged'}:</strong> ${fmtDateTime(p.loggedAt)}</div>
+        ${p.admittedAt?`<div class="lc-mi"><strong>Admitted:</strong> ${fmtDateTime(p.admittedAt)}</div>`:''}
+      </div>
+      ${(p.history||[]).length?`
+      <div class="lc-tl">
+        <div class="lc-tl-lbl">Timeline</div>
+        ${(p.history||[]).slice(-12).reverse().map(h=>`
+          <div class="tl-item"><div class="tl-dot"></div>
+            <div><strong>${esc(h.label)}${h.value?' → '+esc(h.value):''}</strong> <span>${fmtTime(h.at)}</span></div>
+          </div>`).join('')}
+      </div>`:''}`;
+    cards.appendChild(card);
+  });
+};
+
+window.clearLog=function(){
+  if(!confirm('Clear all log entries?'))return;
+  logEntries=[];
+  if(fbOK)dbSet('cb2/log',null);else{saveLocal();renderLog();}
+};
+
+// ── SHEET HELPERS ─────────────────────────────────────────────
+window.openSheet=function(id){document.getElementById(id).classList.add('open');};
+window.closeSheet=function(id){document.getElementById(id).classList.remove('open');};
+
+// Close on backdrop tap
+['cellOverlay','disOverlay','ptOverlay'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){
+    if(e.target===this)closeSheet(id);
+  });
+});
+
+// ── TABS ──────────────────────────────────────────────────────
+window.switchTab=function(tab){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='board')||(i===1&&tab==='log')));
+  document.getElementById('panel-board').classList.toggle('active',tab==='board');
+  document.getElementById('panel-log').classList.toggle('active',tab==='log');
+  if(tab==='log')renderLog();
+};
+
+// ── CLOCK ─────────────────────────────────────────────────────
+function tick(){
+  const n=new Date(),h=n.getHours()%12||12,m=String(n.getMinutes()).padStart(2,'0'),a=n.getHours()>=12?'PM':'AM';
+  document.getElementById('clock').textContent=`${h}:${m} ${a}`;
+}
+tick();setInterval(tick,1000);
+
+// ── HELPERS ───────────────────────────────────────────────────
+function addHist(n,label,value,at){if(!rooms[n])return;if(!rooms[n].history)rooms[n].history=[];rooms[n].history.push({label,value,at});}
+function eC(v){return{pending:'ep',progress:'ei',signed:'es',updated:'eu'}[v]||'ep';}
+function eLabel(v){return{pending:'⏳ Pending',progress:'📝 In Progress',signed:'✅ Signed',updated:'🔄 Updated'}[v]||'—';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtTime(ts){if(!ts)return'';const d=new Date(ts),h=d.getHours()%12||12,m=String(d.getMinutes()).padStart(2,'0'),a=d.getHours()>=12?'PM':'AM';return`${h}:${m} ${a}`;}
+function fmtDateTime(ts){if(!ts)return'';const d=new Date(ts);const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];return`${mo} ${d.getDate()}, ${fmtTime(ts)}`;}
+</script>
+</body>
+</html>
