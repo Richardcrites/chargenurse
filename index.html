@@ -591,6 +591,28 @@ function eLabel(v){return{pending:'⏳ Pending',progress:'📝 In Progress',sign
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function fmtTime(ts){if(!ts)return'';const d=new Date(ts),h=d.getHours()%12||12,m=String(d.getMinutes()).padStart(2,'0'),a=d.getHours()>=12?'PM':'AM';return`${h}:${m} ${a}`;}
 function fmtDateTime(ts){if(!ts)return'';const d=new Date(ts);const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];return`${mo} ${d.getDate()}, ${fmtTime(ts)}`;}
+
+// --- FORCE 100% SCALE REGARDLESS OF BROWSER ZOOM ---
+function counteractZoom() {
+  // Detects the current browser zoom level
+  const zoomLevel = window.devicePixelRatio;
+  if (zoomLevel !== 1) {
+    // Calculates the inverse to bring it back to exactly 1.0
+    const scaleFactor = 1 / zoomLevel;
+    document.body.style.transform = `scale(${scaleFactor})`;
+    document.body.style.width = (100 * zoomLevel) + 'vw';
+    document.body.style.height = (100 * zoomLevel) + 'vh';
+  } else {
+    document.body.style.transform = 'none';
+    document.body.style.width = '100vw';
+  }
+}
+
+// Run on load and whenever the window is resized/zoomed
+window.addEventListener('resize', counteractZoom);
+window.addEventListener('load', counteractZoom);
+counteractZoom();
+
 </script>
 </body>
 </html>
