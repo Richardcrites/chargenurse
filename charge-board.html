@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Charge Board</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f3f8;
+    --surface: #ffffff;
+    --surface2: #e8edf5;
+    --border: #d4dce8;
+    --text: #1a2336;
+    --muted: #7a8fa8;
+    --muted2: #b0bfcf;
+    --available: #16a34a;
+    --available-bg: #f0fdf4;
+    --available-border: #bbf7d0;
+
+    --est-pending:  #d97706; --est-pending-bg:  #fffbeb; --est-pending-border:  #fde68a;
+    --est-progress: #2563eb; --est-progress-bg: #eff6ff; --est-progress-border: #bfdbfe;
+    --est-signed:   #16a34a; --est-signed-bg:   #f0fdf4; --est-signed-border:   #bbf7d0;
+    --est-updated:  #7c3aed; --est-updated-bg:  #f5f3ff; --est-updated-border:  #ddd6fe;
+
+    --diag-pending:  #94a3b8; --diag-pending-bg:  #f8fafc; --diag-pending-border: #e2e8f0;
+    --diag-progress: #d97706; --diag-progress-bg: #fffbeb; --diag-progress-border:#fde68a;
+    --diag-complete: #16a34a; --diag-complete-bg: #f0fdf4; --diag-complete-border:#bbf7d0;
+
+    --cpr: #16a34a; --cpr-bg: #f0fdf4; --cpr-border: #bbf7d0;
+    --dnr: #dc2626; --dnr-bg: #fef2f2; --dnr-border: #fecaca;
+    --am-color: #0891b2; --am-bg: #ecfeff; --am-border: #a5f3fc;
+    --pm-color: #7c3aed; --pm-bg: #f5f3ff; --pm-border: #ddd6fe;
+    --icu-accent: #2563eb;
+    --surg-accent: #7c3aed;
+    --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    padding: 14px 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: var(--shadow);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left  { display:flex; align-items:center; gap:20px; }
+  .clinic-name  { font-family:'Syne',sans-serif; font-size:10px; font-weight:700; letter-spacing:.3em; text-transform:uppercase; color:var(--muted); }
+  .board-title  { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; letter-spacing:-.02em; }
+  .header-right { display:flex; align-items:center; gap:10px; }
+  .clock-small  { font-size:12px; color:var(--muted); letter-spacing:.05em; }
+
+  .tabs { display:flex; gap:3px; background:var(--bg); border-radius:7px; padding:3px; }
+  .tab-btn {
+    padding:5px 14px; border-radius:5px; font-family:'DM Mono',monospace;
+    font-size:11px; letter-spacing:.05em; cursor:pointer; border:none;
+    background:transparent; color:var(--muted); transition:all .15s;
+  }
+  .tab-btn.active { background:var(--surface); color:var(--text); box-shadow:var(--shadow); }
+
+  .firebase-status { display:flex; align-items:center; gap:5px; font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted2); }
+  .fb-dot { width:6px; height:6px; border-radius:50%; background:var(--muted2); transition:background .3s; }
+  .fb-dot.live  { background:#16a34a; box-shadow:0 0 6px #16a34a; }
+  .fb-dot.error { background:#dc2626; }
+
+  /* ── CONTENT ── */
+  .content { padding: 20px 24px; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  /* ── FIREBASE BANNER ── */
+  .config-banner {
+    background:#fffbeb; border:1.5px solid #fde68a; border-radius:8px;
+    padding:14px 18px; margin-bottom:18px;
+    display:flex; align-items:flex-start; gap:12px;
+  }
+  .config-banner.hidden { display:none; }
+  .config-icon { font-size:18px; flex-shrink:0; }
+  .config-text { font-size:11px; color:#92400e; line-height:1.6; flex:1; }
+  .config-text strong { display:block; font-size:12px; margin-bottom:4px; color:#78350f; }
+  .config-input {
+    background:#fff; border:1.5px solid #fde68a; border-radius:5px;
+    font-family:'DM Mono',monospace; font-size:11px; padding:6px 10px;
+    color:var(--text); width:100%; margin-top:6px; outline:none;
+  }
+  .config-input:focus { border-color:var(--icu-accent); }
+  .btn-connect {
+    margin-top:8px; background:#f59e0b; color:#fff; border:none;
+    border-radius:5px; padding:6px 14px; font-family:'DM Mono',monospace;
+    font-size:10px; cursor:pointer; font-weight:500;
+  }
+  .btn-connect:hover { background:#d97706; }
+
+  /* ── ROOM GRID ── */
+  .room-grid { display:flex; flex-direction:column; gap:6px; }
+
+  .room-row {
+    display:grid;
+    grid-template-columns: 90px 1fr;
+    background: var(--surface);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    min-height: 64px;
+    transition: box-shadow .15s;
+  }
+  .room-row:hover { box-shadow: var(--shadow-md); }
+
+  /* Room number label */
+  .room-label {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background: var(--surface2);
+    border-right: 2px solid var(--border);
+    padding: 10px 8px;
+    flex-shrink: 0;
+  }
+  .room-number {
+    font-family:'Syne',sans-serif; font-weight:800; font-size:15px;
+    color:var(--text); letter-spacing:-.01em; line-height:1;
+  }
+  .room-word { font-size:8px; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; margin-top:2px; }
+
+  /* Room content */
+  .room-content {
+    display:flex; align-items:stretch; padding:0;
+    overflow:hidden;
+  }
+
+  /* Available state */
+  .room-available {
+    display:flex; align-items:center; padding:0 20px;
+    width:100%;
+  }
+  .available-pill {
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--available-bg); color:var(--available);
+    border:1.5px solid var(--available-border);
+    border-radius:20px; padding:4px 12px; font-size:11px; font-weight:500;
+    letter-spacing:.05em;
+  }
+  .available-pill::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--available); }
+
+  .btn-assign {
+    margin-left:auto; display:flex; align-items:center; gap:5px;
+    background:transparent; border:1.5px dashed var(--border);
+    border-radius:5px; padding:5px 12px; font-family:'DM Mono',monospace;
+    font-size:10px; color:var(--muted); cursor:pointer; transition:all .15s;
+    letter-spacing:.05em;
+  }
+  .btn-assign:hover { border-color:var(--icu-accent); color:var(--icu-accent); background:var(--icu-light,#eff6ff); }
+
+  /* Occupied room */
+  .room-occupied {
+    display:grid;
+    grid-template-columns: 160px 80px 120px 140px 150px 150px 150px 1fr;
+    align-items:center;
+    width:100%; gap:0;
+  }
+
+  .room-cell {
+    padding: 10px 10px;
+    border-right: 1px solid var(--border);
+    height:100%; display:flex; flex-direction:column; justify-content:center;
+  }
+  .room-cell:last-child { border-right:none; }
+
+  .cell-label {
+    font-size:8px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--muted2); margin-bottom:4px; font-weight:500;
+  }
+
+  /* Patient info */
+  .pt-name  { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; line-height:1.1; }
+  .pt-owner { font-size:9px; color:var(--muted); margin-top:2px; letter-spacing:.04em; text-transform:uppercase; }
+  .pt-reason{ font-size:9px; color:var(--muted); margin-top:2px; }
+
+  .badge     { display:inline-block; padding:2px 6px; border-radius:3px; font-size:9px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; }
+  .badge-fel { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+  .badge-k9  { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+
+  .status-pill { display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:12px; font-size:9px; font-weight:500; letter-spacing:.05em; }
+  .status-pill::before { content:''; width:4px; height:4px; border-radius:50%; }
+  .pill-cpr { background:var(--cpr-bg); color:var(--cpr); border:1px solid var(--cpr-border); }
+  .pill-cpr::before { background:var(--cpr); }
+  .pill-dnr { background:var(--dnr-bg); color:var(--dnr); border:1px solid var(--dnr-border); }
+  .pill-dnr::before { background:var(--dnr); }
+
+  /* DVM pills */
+  .dvm-stack { display:flex; flex-direction:column; gap:3px; }
+  .dvm-pill  { display:inline-flex; align-items:center; gap:3px; padding:2px 6px; border-radius:3px; font-size:10px; font-weight:500; white-space:nowrap; }
+  .shift-lbl { font-size:7px; letter-spacing:.1em; text-transform:uppercase; opacity:.7; }
+  .dvm-am { background:var(--am-bg); color:var(--am-color); border:1px solid var(--am-border); }
+  .dvm-pm { background:var(--pm-bg); color:var(--pm-color); border:1px solid var(--pm-border); }
+
+  /* Status dropdowns */
+  .status-sel {
+    appearance:none; -webkit-appearance:none;
+    border-radius:5px; font-family:'DM Mono',monospace;
+    font-size:10px; font-weight:500; padding:4px 20px 4px 7px; cursor:pointer;
+    outline:none; border:1.5px solid; width:100%;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%237a8fa8'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 5px center;
+    transition:all .15s;
+  }
+  .est-pending  { background:var(--est-pending-bg);  color:var(--est-pending);  border-color:var(--est-pending-border); }
+  .est-progress { background:var(--est-progress-bg); color:var(--est-progress); border-color:var(--est-progress-border); }
+  .est-signed   { background:var(--est-signed-bg);   color:var(--est-signed);   border-color:var(--est-signed-border); }
+  .est-updated  { background:var(--est-updated-bg);  color:var(--est-updated);  border-color:var(--est-updated-border); }
+  .diag-pending  { background:var(--diag-pending-bg);  color:var(--diag-pending);  border-color:var(--diag-pending-border); }
+  .diag-progress { background:var(--diag-progress-bg); color:var(--diag-progress); border-color:var(--diag-progress-border); }
+  .diag-complete { background:var(--diag-complete-bg); color:var(--diag-complete); border-color:var(--diag-complete-border); }
+
+  .ts-chip { font-size:8px; color:var(--muted2); margin-top:3px; }
+
+  /* Discharge button */
+  .btn-discharge {
+    display:inline-flex; align-items:center; gap:4px;
+    background:var(--dnr-bg); color:var(--dnr); border:1.5px solid var(--dnr-border);
+    border-radius:5px; padding:4px 8px; font-family:'DM Mono',monospace;
+    font-size:9px; cursor:pointer; transition:all .15s; font-weight:500; white-space:nowrap;
+  }
+  .btn-discharge:hover { background:var(--dnr); color:#fff; }
+  .btn-edit {
+    display:inline-flex; align-items:center; gap:4px;
+    background:var(--surface2); color:var(--muted); border:1.5px solid var(--border);
+    border-radius:5px; padding:4px 8px; font-family:'DM Mono',monospace;
+    font-size:9px; cursor:pointer; transition:all .15s; font-weight:500; white-space:nowrap;
+    margin-bottom:4px;
+  }
+  .btn-edit:hover { border-color:var(--icu-accent); color:var(--icu-accent); }
+
+  /* ── COLUMN HEADERS ── */
+  .board-headers {
+    display:grid;
+    grid-template-columns: 90px 160px 80px 120px 140px 150px 150px 150px 1fr;
+    padding: 0 0 4px 0;
+    gap:0;
+  }
+  .col-header {
+    font-size:8px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--muted2); padding:2px 10px; font-weight:500;
+  }
+  .col-header:first-child { background:transparent; }
+
+  /* ── LOG TAB ── */
+  .log-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .log-title  { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; }
+  .log-sub    { font-size:11px; color:var(--muted); margin-top:2px; }
+  .btn-clear  { background:transparent; border:1.5px solid var(--border); border-radius:5px; padding:6px 12px; font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); cursor:pointer; transition:all .15s; }
+  .btn-clear:hover { border-color:var(--dnr); color:var(--dnr); }
+
+  .log-table { width:100%; border-collapse:separate; border-spacing:0 4px; }
+  .log-table thead th { font-size:9px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--muted2); padding:4px 12px; text-align:left; }
+  .log-table tbody tr { background:var(--surface); box-shadow:var(--shadow); }
+  .log-table tbody td { padding:10px 12px; font-size:11px; vertical-align:middle; }
+  .log-table tbody tr td:first-child { border-left:3px solid #d1d5db; border-radius:6px 0 0 6px; }
+  .log-table tbody tr td:last-child { border-radius:0 6px 6px 0; }
+  .log-empty { text-align:center; padding:48px; color:var(--muted2); font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+
+  .hist-item { font-size:9px; color:var(--muted); line-height:1.5; }
+  .hist-item strong { color:var(--text); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(15,25,45,0.45);
+    backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    z-index:1000; padding:20px; opacity:0; pointer-events:none; transition:opacity .2s;
+  }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal {
+    background:#fff; border:1.5px solid var(--border); border-radius:12px;
+    width:100%; max-width:600px; max-height:90vh; overflow-y:auto;
+    transform:translateY(10px); transition:transform .2s;
+    box-shadow:0 24px 60px rgba(0,0,0,.18);
+  }
+  .modal-overlay.open .modal { transform:translateY(0); }
+  .modal-header {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:15px 20px; border-bottom:1.5px solid var(--border);
+    position:sticky; top:0; background:#fff; z-index:1;
+  }
+  .modal-title { font-family:'Syne',sans-serif; font-size:16px; font-weight:800; }
+  .modal-room  { font-size:11px; color:var(--muted); margin-top:1px; }
+  .modal-close { background:transparent; border:1.5px solid var(--border); border-radius:5px; color:var(--muted); width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all .15s; }
+  .modal-close:hover { border-color:var(--dnr); color:var(--dnr); }
+  .modal-body { padding:20px; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .form-group { display:flex; flex-direction:column; gap:4px; }
+  .form-group label { font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:500; }
+  .form-input, .form-select {
+    background:#f8fafc; border:1.5px solid var(--border); border-radius:5px;
+    color:var(--text); font-family:'DM Mono',monospace; font-size:12px;
+    padding:7px 10px; outline:none; width:100%; transition:border-color .15s;
+  }
+  .form-input:focus, .form-select:focus { border-color:var(--icu-accent); background:#fff; box-shadow:0 0 0 3px rgba(37,99,235,.08); }
+  .form-divider { grid-column:1/-1; border:none; border-top:1.5px solid var(--border); }
+  .form-sec-lbl { grid-column:1/-1; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted2); }
+  .shift-pair { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .shift-wrap { position:relative; }
+  .shift-badge { position:absolute; left:7px; top:50%; transform:translateY(-50%); font-size:7px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:1px 4px; border-radius:3px; pointer-events:none; }
+  .sb-am { background:var(--am-bg); color:var(--am-color); border:1px solid var(--am-border); }
+  .sb-pm { background:var(--pm-bg); color:var(--pm-color); border:1px solid var(--pm-border); }
+  .shift-input { padding-left:36px !important; }
+  .tog-row { display:flex; gap:6px; }
+  .tog { flex:1; padding:6px; border-radius:5px; font-family:'DM Mono',monospace; font-size:10px; cursor:pointer; border:1.5px solid var(--border); background:#f8fafc; color:var(--muted); transition:all .15s; text-align:center; }
+  .tog:hover { border-color:#a0b0c4; }
+  .tog.t-cpr.on  { background:var(--cpr-bg);  color:var(--cpr);  border-color:var(--cpr-border); }
+  .tog.t-dnr.on  { background:var(--dnr-bg);  color:var(--dnr);  border-color:var(--dnr-border); }
+  .tog.t-icu.on  { background:#eff6ff; color:var(--icu-accent); border-color:#93c5fd; }
+  .tog.t-surg.on { background:#f5f3ff; color:var(--surg-accent); border-color:#c4b5fd; }
+  .modal-footer  { display:flex; justify-content:flex-end; gap:8px; padding:14px 20px; border-top:1.5px solid var(--border); position:sticky; bottom:0; background:#fff; }
+  .btn { padding:7px 16px; border-radius:5px; font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; border:none; transition:all .15s; font-weight:500; }
+  .btn-save   { background:var(--icu-accent); color:#fff; }
+  .btn-save:hover { background:#1d4ed8; }
+  .btn-cancel { background:transparent; border:1.5px solid var(--border); color:var(--muted); }
+  .btn-cancel:hover { border-color:#a0b0c4; color:var(--text); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div>
+      <div class="clinic-name">Dallas Animal Urgency</div>
+      <div class="board-title">Charge Board</div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('board')">Active Rooms</button>
+      <button class="tab-btn" onclick="switchTab('log')">Discharge Log</button>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="firebase-status">
+      <div class="fb-dot" id="fb-dot"></div>
+      <span id="fb-label">Local</span>
+    </div>
+    <div class="clock-small" id="clock"></div>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- FIREBASE BANNER -->
+  <div class="config-banner" id="config-banner">
+    <div class="config-icon">🔥</div>
+    <div class="config-text">
+      <strong>Connect Firebase for real-time sync across all devices</strong>
+      Paste your Firebase Realtime Database config JSON below. Only needs to be done once per device.
+      <input class="config-input" id="fb-input" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","databaseURL":"..."}' />
+      <button class="btn-connect" onclick="connectFirebase()">Connect Firebase</button>
+    </div>
+  </div>
+
+  <!-- BOARD TAB -->
+  <div class="tab-panel active" id="panel-board">
+    <!-- Column headers -->
+    <div class="board-headers">
+      <div class="col-header"></div>
+      <div class="col-header">Patient</div>
+      <div class="col-header">Species</div>
+      <div class="col-header">Doctor</div>
+      <div class="col-header">Tech</div>
+      <div class="col-header">Estimate</div>
+      <div class="col-header">Diagnostics</div>
+      <div class="col-header">Treatments</div>
+      <div class="col-header">Actions</div>
+    </div>
+    <!-- Room rows -->
+    <div class="room-grid" id="room-grid"></div>
+  </div>
+
+  <!-- LOG TAB -->
+  <div class="tab-panel" id="panel-log">
+    <div class="log-header">
+      <div>
+        <div class="log-title">Discharge Log</div>
+        <div class="log-sub">Discharged patients with full status history &amp; timestamps</div>
+      </div>
+      <button class="btn-clear" onclick="clearLog()">Clear Log</button>
+    </div>
+    <table class="log-table">
+      <thead><tr>
+        <th>Room</th><th>Patient</th><th>Doctor</th><th>Reason</th>
+        <th>Estimate</th><th>Diagnostics</th><th>Treatments</th>
+        <th>Admitted</th><th>Discharged</th><th>Status History</th>
+      </tr></thead>
+      <tbody id="log-body"></tbody>
+    </table>
+    <div class="log-empty" id="log-empty">No discharged patients yet</div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title">Assign Patient</div>
+        <div class="modal-room" id="modal-room"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Patient Name *</label>
+          <input class="form-input" id="f-name" placeholder="e.g. Buddy Cox" />
+        </div>
+        <div class="form-group">
+          <label>Owner Last Name</label>
+          <input class="form-input" id="f-owner" placeholder="e.g. Cox" />
+        </div>
+        <div class="form-group">
+          <label>Species</label>
+          <select class="form-select" id="f-species">
+            <option value="K9">K9 (Dog)</option>
+            <option value="Fel">Fel (Cat)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Reason for Visit</label>
+          <input class="form-input" id="f-reason" placeholder="e.g. Pancreatitis" />
+        </div>
+        <div class="form-group">
+          <label>Section</label>
+          <div class="tog-row">
+            <button class="tog t-icu"  id="t-icu"  onclick="pickSec('icu')">ICU</button>
+            <button class="tog t-surg" id="t-surg" onclick="pickSec('surg')">Surgery</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>CPR / DNR</label>
+          <div class="tog-row">
+            <button class="tog t-cpr" id="t-cpr" onclick="pickStatus('CPR')">CPR</button>
+            <button class="tog t-dnr" id="t-dnr" onclick="pickStatus('DNR')">DNR</button>
+          </div>
+        </div>
+
+        <hr class="form-divider" />
+        <div class="form-sec-lbl">Staff</div>
+
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Doctor (AM / PM)</label>
+          <div class="shift-pair">
+            <div class="shift-wrap">
+              <span class="shift-badge sb-am">AM</span>
+              <input class="form-input shift-input" id="f-dvm-am" placeholder="Initials" maxlength="6" />
+            </div>
+            <div class="shift-wrap">
+              <span class="shift-badge sb-pm">PM</span>
+              <input class="form-input shift-input" id="f-dvm-pm" placeholder="Initials" maxlength="6" />
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Tech (AM)</label>
+          <input class="form-input" id="f-tech-am" placeholder="e.g. KB" maxlength="4" />
+        </div>
+        <div class="form-group">
+          <label>Tech (PM)</label>
+          <input class="form-input" id="f-tech-pm" placeholder="e.g. MK" maxlength="4" />
+        </div>
+
+        <hr class="form-divider" />
+        <div class="form-sec-lbl">Initial Status</div>
+
+        <div class="form-group">
+          <label>Estimate</label>
+          <select class="form-select" id="f-est">
+            <option value="pending">⏳ Pending</option>
+            <option value="progress">📝 In Progress</option>
+            <option value="signed">✅ Signed</option>
+            <option value="updated">🔄 Updated</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-save" onclick="savePatient()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, remove, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── STATE ──────────────────────────────────────
+const ROOMS = [1,2,3,4,5,6,7,8,9,10];
+let rooms = {};           // roomNum -> patient object or null
+let dischargeLog = [];
+let db = null, fbConnected = false;
+let modalRoom = null;     // which room we're editing
+let fStatus = 'CPR', fSection = 'icu';
+
+// ── FIREBASE ────────────────────────────────────
+window.connectFirebase = function() {
+  const raw = document.getElementById('fb-input').value.trim();
+  try {
+    const cfg = JSON.parse(raw);
+    const app = initializeApp(cfg);
+    db = getDatabase(app);
+    localStorage.setItem('fb_cfg_charge', raw);
+    setupListeners();
+  } catch(e) {
+    alert('Invalid Firebase config JSON.\n\n' + e.message);
+  }
+};
+
+function setupListeners() {
+  document.getElementById('fb-dot').className = 'fb-dot live';
+  document.getElementById('fb-label').textContent = 'Live';
+  document.getElementById('config-banner').classList.add('hidden');
+  fbConnected = true;
+
+  onValue(ref(db, 'charge/rooms'), snap => {
+    rooms = snap.val() || {};
+    renderGrid();
+  });
+  onValue(ref(db, 'charge/log'), snap => {
+    const raw = snap.val();
+    dischargeLog = raw ? Object.values(raw).sort((a,b)=>b.dischargedAt-a.dischargedAt) : [];
+    renderLog();
+  });
+}
+
+function dbSet(path, data) { if (db) set(ref(db, path), data); }
+function dbDel(path)       { if (db) remove(ref(db, path)); }
+function dbPush(path, d)   { if (db) push(ref(db, path), d); }
+
+// ── LOCAL FALLBACK ──────────────────────────────
+function loadLocal() {
+  try {
+    const s = localStorage.getItem('charge_rooms_v1');
+    if (s) { const p = JSON.parse(s); rooms = p.rooms||{}; dischargeLog = p.log||[]; }
+  } catch(e) {}
+}
+function saveLocal() {
+  if (fbConnected) return;
+  localStorage.setItem('charge_rooms_v1', JSON.stringify({rooms, log:dischargeLog}));
+}
+
+// ── RENDER GRID ─────────────────────────────────
+function renderGrid() {
+  const grid = document.getElementById('room-grid');
+  grid.innerHTML = '';
+  ROOMS.forEach(n => {
+    const p = rooms[n] || null;
+    const row = document.createElement('div');
+    row.className = 'room-row';
+    row.id = `room-${n}`;
+
+    // Left label
+    const lbl = `<div class="room-label"><div class="room-number">${n}</div><div class="room-word">Room</div></div>`;
+
+    if (!p) {
+      row.innerHTML = lbl + `
+        <div class="room-content">
+          <div class="room-available">
+            <span class="available-pill">Available</span>
+            <button class="btn-assign" onclick="openModal(${n})">+ Assign Patient</button>
+          </div>
+        </div>`;
+    } else {
+      const estCls  = estClass(p.estStatus);
+      const diagCls = diagClass(p.diagStatus);
+      const txCls   = diagClass(p.txStatus);
+
+      row.innerHTML = lbl + `
+        <div class="room-content">
+          <div class="room-occupied">
+
+            <!-- Patient info -->
+            <div class="room-cell">
+              <div class="pt-name">${esc(p.name)}</div>
+              <div class="pt-owner">${esc(p.owner||'')}</div>
+              ${p.reason ? `<div class="pt-reason">${esc(p.reason)}</div>` : ''}
+              <div style="margin-top:4px">
+                <span class="badge badge-${(p.species||'k9').toLowerCase()}">${esc(p.species||'K9')}</span>
+                <span class="status-pill ${p.status==='DNR'?'pill-dnr':'pill-cpr'}" style="margin-left:4px">${p.status||'CPR'}</span>
+              </div>
+            </div>
+
+            <!-- Doctor -->
+            <div class="room-cell">
+              <div class="cell-label">Doctor</div>
+              ${dvmHtml(p)}
+            </div>
+
+            <!-- Tech -->
+            <div class="room-cell">
+              <div class="cell-label">Tech</div>
+              ${techHtml(p)}
+            </div>
+
+            <!-- Estimate -->
+            <div class="room-cell">
+              <div class="cell-label">Estimate</div>
+              <select class="status-sel ${estCls}" onchange="updateField(${n},'estStatus',this.value,this)">
+                <option value="pending"  ${p.estStatus==='pending'  ?'selected':''}>⏳ Pending</option>
+                <option value="progress" ${p.estStatus==='progress' ?'selected':''}>📝 In Progress</option>
+                <option value="signed"   ${p.estStatus==='signed'   ?'selected':''}>✅ Signed</option>
+                <option value="updated"  ${p.estStatus==='updated'  ?'selected':''}>🔄 Updated</option>
+              </select>
+              ${p.estUpdatedAt ? `<div class="ts-chip">${fmtTime(p.estUpdatedAt)}</div>` : ''}
+            </div>
+
+            <!-- Diagnostics -->
+            <div class="room-cell">
+              <div class="cell-label">Diagnostics</div>
+              <select class="status-sel ${diagCls}" onchange="updateField(${n},'diagStatus',this.value,this)">
+                <option value="pending"  ${p.diagStatus==='pending'  ?'selected':''}>Pending</option>
+                <option value="progress" ${p.diagStatus==='progress' ?'selected':''}>In Progress</option>
+                <option value="complete" ${p.diagStatus==='complete' ?'selected':''}>Complete</option>
+              </select>
+              ${p.diagUpdatedAt ? `<div class="ts-chip">${fmtTime(p.diagUpdatedAt)}</div>` : ''}
+            </div>
+
+            <!-- Treatments -->
+            <div class="room-cell">
+              <div class="cell-label">Treatments</div>
+              <select class="status-sel ${txCls}" onchange="updateField(${n},'txStatus',this.value,this)">
+                <option value="pending"  ${p.txStatus==='pending'  ?'selected':''}>Pending</option>
+                <option value="progress" ${p.txStatus==='progress' ?'selected':''}>In Progress</option>
+                <option value="complete" ${p.txStatus==='complete' ?'selected':''}>Complete</option>
+              </select>
+              ${p.txUpdatedAt ? `<div class="ts-chip">${fmtTime(p.txUpdatedAt)}</div>` : ''}
+            </div>
+
+            <!-- Actions -->
+            <div class="room-cell">
+              <div class="cell-label">Actions</div>
+              <button class="btn-edit" onclick="openModal(${n})">✏ Edit</button>
+              <button class="btn-discharge" onclick="dischargePatient(${n})">🏠 Discharge</button>
+            </div>
+
+          </div>
+        </div>`;
+    }
+    grid.appendChild(row);
+  });
+}
+
+function dvmHtml(p) {
+  const am = p.dvmAm||'', pm = p.dvmPm||'';
+  if (!am && !pm) return '<span style="color:var(--muted2);font-size:10px">—</span>';
+  let h = '<div class="dvm-stack">';
+  if (am) h += `<span class="dvm-pill dvm-am"><span class="shift-lbl">AM</span>${esc(am)}</span>`;
+  if (pm) h += `<span class="dvm-pill dvm-pm"><span class="shift-lbl">PM</span>${esc(pm)}</span>`;
+  return h + '</div>';
+}
+function techHtml(p) {
+  const am = p.techAm||'', pm = p.techPm||'';
+  if (!am && !pm) return '<span style="color:var(--muted2);font-size:10px">—</span>';
+  let h = '<div class="dvm-stack">';
+  if (am) h += `<span class="dvm-pill" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0"><span class="shift-lbl" style="opacity:.7">AM</span>${esc(am)}</span>`;
+  if (pm) h += `<span class="dvm-pill" style="background:#fdf4ff;color:#9333ea;border:1px solid #e9d5ff"><span class="shift-lbl" style="opacity:.7">PM</span>${esc(pm)}</span>`;
+  return h + '</div>';
+}
+
+function estClass(v)  { return ({pending:'est-pending',progress:'est-progress',signed:'est-signed',updated:'est-updated'})[v]||'est-pending'; }
+function diagClass(v) { return ({pending:'diag-pending',progress:'diag-progress',complete:'diag-complete'})[v]||'diag-pending'; }
+
+// ── UPDATE FIELD ────────────────────────────────
+window.updateField = function(roomNum, field, value, el) {
+  if (!rooms[roomNum]) return;
+  const now = Date.now();
+  rooms[roomNum][field] = value;
+  const tsMap = {estStatus:'estUpdatedAt',diagStatus:'diagUpdatedAt',txStatus:'txUpdatedAt'};
+  if (tsMap[field]) rooms[roomNum][tsMap[field]] = now;
+  if (!rooms[roomNum].history) rooms[roomNum].history = [];
+  rooms[roomNum].history.push({field, value, at: now});
+
+  // Restyle dropdown immediately
+  const cls = field==='estStatus' ? estClass(value) : diagClass(value);
+  el.className = `status-sel ${cls}`;
+
+  // Update timestamp chip next to dropdown
+  const cell = el.parentElement;
+  let chip = cell.querySelector('.ts-chip');
+  if (!chip) { chip = document.createElement('div'); chip.className='ts-chip'; cell.appendChild(chip); }
+  chip.textContent = fmtTime(now);
+
+  if (fbConnected) dbSet(`charge/rooms/${roomNum}`, rooms[roomNum]);
+  else saveLocal();
+};
+
+// ── DISCHARGE ───────────────────────────────────
+window.dischargePatient = function(roomNum) {
+  const p = rooms[roomNum];
+  if (!p) return;
+  if (!confirm(`Discharge ${p.name} from Room ${roomNum}?`)) return;
+  const entry = {...p, roomNum, dischargedAt: Date.now()};
+  dischargeLog.unshift(entry);
+  if (fbConnected) {
+    dbDel(`charge/rooms/${roomNum}`);
+    dbPush('charge/log', entry);
+  } else {
+    delete rooms[roomNum];
+    saveLocal();
+    renderGrid();
+    renderLog();
+  }
+};
+
+// ── RENDER LOG ──────────────────────────────────
+function renderLog() {
+  const tbody = document.getElementById('log-body');
+  const empty = document.getElementById('log-empty');
+  tbody.innerHTML = '';
+  empty.style.display = dischargeLog.length ? 'none' : 'block';
+  dischargeLog.forEach(p => {
+    const tr = document.createElement('tr');
+    const estLbl  = {pending:'⏳ Pending',progress:'📝 In Progress',signed:'✅ Signed',updated:'🔄 Updated'}[p.estStatus]||'—';
+    const diagLbl = {pending:'Pending',progress:'In Progress',complete:'Complete'};
+    tr.innerHTML = `
+      <td style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px">Room ${p.roomNum||'?'}</td>
+      <td>
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:12px">${esc(p.name)}</div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase">${esc(p.owner||'')}</div>
+      </td>
+      <td>${dvmHtml(p)}</td>
+      <td style="font-size:10px;color:var(--muted)">${esc(p.reason||'—')}</td>
+      <td><span class="status-sel ${estClass(p.estStatus)}" style="display:inline-block;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:500;border:1.5px solid">${estLbl}</span></td>
+      <td><span class="status-sel ${diagClass(p.diagStatus)}" style="display:inline-block;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:500;border:1.5px solid">${diagLbl[p.diagStatus]||'—'}</span></td>
+      <td><span class="status-sel ${diagClass(p.txStatus)}" style="display:inline-block;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:500;border:1.5px solid">${diagLbl[p.txStatus]||'—'}</span></td>
+      <td style="font-size:10px;color:var(--muted)">${p.admittedAt?fmtDateTime(p.admittedAt):'—'}</td>
+      <td style="font-size:10px;color:var(--muted)">${fmtDateTime(p.dischargedAt)}</td>
+      <td>${buildHistory(p.history||[])}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function buildHistory(hist) {
+  if (!hist.length) return '<span style="color:var(--muted2);font-size:9px">No changes</span>';
+  const fl = {estStatus:'Estimate',diagStatus:'Diagnostics',txStatus:'Treatments'};
+  const vl = {pending:'Pending',progress:'In Progress',complete:'Complete',signed:'Signed',updated:'Updated'};
+  return hist.slice(-6).reverse().map(h =>
+    `<div class="hist-item"><strong>${fl[h.field]||h.field}:</strong> ${vl[h.value]||h.value} <span style="color:var(--muted2)">${fmtTime(h.at)}</span></div>`
+  ).join('');
+}
+
+window.clearLog = function() {
+  if (!confirm('Clear all discharge log entries?')) return;
+  dischargeLog = [];
+  if (fbConnected) dbSet('charge/log', null);
+  else { saveLocal(); renderLog(); }
+};
+
+// ── MODAL ───────────────────────────────────────
+window.openModal = function(roomNum) {
+  modalRoom = roomNum;
+  const p = rooms[roomNum] || null;
+  document.getElementById('modal-title').textContent = p ? `Edit — Room ${roomNum}` : `Assign Patient — Room ${roomNum}`;
+  document.getElementById('modal-room').textContent = p ? `Editing ${p.name}` : '';
+
+  if (p) {
+    document.getElementById('f-name').value    = p.name||'';
+    document.getElementById('f-owner').value   = p.owner||'';
+    document.getElementById('f-species').value = p.species||'K9';
+    document.getElementById('f-reason').value  = p.reason||'';
+    document.getElementById('f-dvm-am').value  = p.dvmAm||'';
+    document.getElementById('f-dvm-pm').value  = p.dvmPm||'';
+    document.getElementById('f-tech-am').value = p.techAm||'';
+    document.getElementById('f-tech-pm').value = p.techPm||'';
+    document.getElementById('f-est').value     = p.estStatus||'pending';
+    pickStatus(p.status||'CPR'); pickSec(p.section||'icu');
+  } else {
+    ['f-name','f-owner','f-reason','f-dvm-am','f-dvm-pm','f-tech-am','f-tech-pm'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('f-species').value='K9';
+    document.getElementById('f-est').value='pending';
+    pickStatus('CPR'); pickSec('icu');
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+};
+
+window.closeModal = function() {
+  document.getElementById('modalOverlay').classList.remove('open');
+};
+
+window.pickStatus = function(v) {
+  fStatus=v;
+  document.getElementById('t-cpr').classList.toggle('on',v==='CPR');
+  document.getElementById('t-dnr').classList.toggle('on',v==='DNR');
+};
+window.pickSec = function(v) {
+  fSection=v;
+  document.getElementById('t-icu').classList.toggle('on',v==='icu');
+  document.getElementById('t-surg').classList.toggle('on',v==='surg');
+};
+
+window.savePatient = function() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { document.getElementById('f-name').focus(); return; }
+  const existing = rooms[modalRoom] || {};
+  const p = {
+    ...existing,
+    name,
+    owner:     document.getElementById('f-owner').value.trim(),
+    species:   document.getElementById('f-species').value,
+    reason:    document.getElementById('f-reason').value.trim(),
+    dvmAm:     document.getElementById('f-dvm-am').value.trim().toUpperCase(),
+    dvmPm:     document.getElementById('f-dvm-pm').value.trim().toUpperCase(),
+    techAm:    document.getElementById('f-tech-am').value.trim().toUpperCase(),
+    techPm:    document.getElementById('f-tech-pm').value.trim().toUpperCase(),
+    status:    fStatus,
+    section:   fSection,
+    estStatus: document.getElementById('f-est').value,
+    diagStatus: existing.diagStatus || 'pending',
+    txStatus:   existing.txStatus   || 'pending',
+    admittedAt: existing.admittedAt || Date.now(),
+    history:    existing.history    || [],
+  };
+  rooms[modalRoom] = p;
+  if (fbConnected) dbSet(`charge/rooms/${modalRoom}`, p);
+  else { saveLocal(); renderGrid(); }
+  closeModal();
+};
+
+// ── TABS ────────────────────────────────────────
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&tab==='board')||(i===1&&tab==='log')));
+  document.getElementById('panel-board').classList.toggle('active',tab==='board');
+  document.getElementById('panel-log').classList.toggle('active',tab==='log');
+  if (tab==='log') renderLog();
+};
+
+// ── CLOCK ────────────────────────────────────────
+function tick(){
+  const n=new Date(),h=n.getHours()%12||12,m=String(n.getMinutes()).padStart(2,'0'),a=n.getHours()>=12?'PM':'AM';
+  document.getElementById('clock').textContent=`${h}:${m} ${a}`;
+}
+tick(); setInterval(tick,1000);
+
+// ── HELPERS ──────────────────────────────────────
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtTime(ts){
+  if(!ts)return'';
+  const d=new Date(ts),h=d.getHours()%12||12,m=String(d.getMinutes()).padStart(2,'0'),a=d.getHours()>=12?'PM':'AM';
+  return `${h}:${m} ${a}`;
+}
+function fmtDateTime(ts){
+  if(!ts)return'';
+  const d=new Date(ts);
+  const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  return `${mo} ${d.getDate()}, ${fmtTime(ts)}`;
+}
+
+// ── INIT ────────────────────────────────────────
+document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+const savedCfg = localStorage.getItem('fb_cfg_charge');
+if (savedCfg) {
+  document.getElementById('fb-input').value = savedCfg;
+  try {
+    const cfg = JSON.parse(savedCfg);
+    const app = initializeApp(cfg);
+    db = getDatabase(app);
+    setupListeners();
+  } catch(e) { loadLocal(); renderGrid(); renderLog(); }
+} else {
+  loadLocal(); renderGrid(); renderLog();
+}
+</script>
+</body>
+</html>
