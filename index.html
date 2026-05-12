@@ -863,16 +863,21 @@ function fmtDateTime(ts){
 // ── INIT ────────────────────────────────────────
 document.getElementById('modalOverlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
 
-const savedCfg = localStorage.getItem('fb_cfg_charge');
-if (savedCfg) {
-  document.getElementById('fb-input').value = savedCfg;
-  try {
-    const cfg = JSON.parse(savedCfg);
-    const app = initializeApp(cfg);
-    db = getDatabase(app);
-    setupListeners();
-  } catch(e) { loadLocal(); renderGrid(); renderLog(); }
-} else {
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCbl74uize74FPXrsmX3-kEftbyx3h5pWA",
+  authDomain: "chargenurse-610c9.firebaseapp.com",
+  projectId: "chargenurse-610c9",
+  databaseURL: "https://chargenurse-610c9-default-rtdb.firebaseio.com",
+  storageBucket: "chargenurse-610c9.firebasestorage.app",
+  messagingSenderId: "594902619971",
+  appId: "1:594902619971:web:2edde9161e8d4c4fcb01f6"
+};
+try {
+  const app = initializeApp(FIREBASE_CONFIG);
+  db = getDatabase(app);
+  setupListeners();
+} catch(e) {
+  console.error('Firebase init failed:', e);
   loadLocal(); renderGrid(); renderLog();
 }
 </script>
