@@ -132,6 +132,47 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--text);}
 .btn-remove-pt:hover{color:var(--red);}
 .btn-add-pt{background:var(--bg);border:1px dashed var(--border);color:var(--muted);font-size:12px;font-weight:600;padding:7px;border-radius:var(--radius-sm);cursor:pointer;width:100%;transition:all 0.15s;}
 .btn-add-pt:hover{border-color:var(--text);color:var(--text);}
+/* ── TECH LOAD BAR ───────────────────────── */
+.tech-load-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;min-height:0;}
+.tech-pill{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 8px;font-size:12px;font-weight:600;font-family:'DM Mono',monospace;transition:all 0.2s;}
+.tech-pill-avatar{width:22px;height:22px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--muted);flex-shrink:0;}
+.tech-pill-count{font-size:13px;font-weight:700;}
+.tech-pill.load-1{border-color:var(--green-border);background:var(--green-bg);color:var(--green);}
+.tech-pill.load-1 .tech-pill-avatar{background:var(--green-border);color:var(--green);}
+.tech-pill.load-2{border-color:var(--amber-border);background:var(--amber-bg);color:var(--amber);}
+.tech-pill.load-2 .tech-pill-avatar{background:var(--amber-border);color:var(--amber);}
+.tech-pill.load-3{border-color:var(--red-border);background:var(--red-bg);color:var(--red);}
+.tech-pill.load-3 .tech-pill-avatar{background:var(--red-border);color:var(--red);}
+
+/* ── TIMELINE LOG CARDS ──────────────────── */
+.log-card-list{display:flex;flex-direction:column;gap:10px;}
+.log-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;position:relative;border-left:4px solid var(--border);}
+.log-card.over-2h{border-left-color:var(--red);}
+.log-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.log-card-patient{display:flex;flex-direction:column;gap:2px;}
+.log-card-name{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;}
+.log-card-meta{font-size:12px;color:var(--muted);}
+.log-card-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.log-card-room{font-family:'DM Mono',monospace;font-size:11px;font-weight:600;background:var(--surface2);padding:2px 7px;border-radius:6px;}
+.over-2h-flag{font-size:10px;font-weight:700;background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);padding:2px 7px;border-radius:10px;letter-spacing:0.3px;}
+.dropoff-flag{font-size:10px;font-weight:700;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);padding:2px 7px;border-radius:10px;}
+
+.log-timeline{display:flex;flex-direction:column;gap:0;}
+.log-tl-row{display:flex;align-items:stretch;gap:0;min-height:28px;}
+.log-tl-left{width:120px;flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;padding-right:12px;}
+.log-tl-time{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);white-space:nowrap;}
+.log-tl-spine{display:flex;flex-direction:column;align-items:center;width:16px;flex-shrink:0;}
+.log-tl-dot{width:8px;height:8px;border-radius:50%;background:var(--border);border:2px solid var(--surface);flex-shrink:0;margin-top:10px;}
+.log-tl-dot.active{background:var(--blue);}
+.log-tl-dot.green{background:var(--green);}
+.log-tl-dot.amber{background:var(--amber);}
+.log-tl-dot.red{background:var(--red);}
+.log-tl-line{width:2px;background:var(--border);flex:1;margin-left:3px;}
+.log-tl-right{flex:1;display:flex;flex-direction:column;justify-content:center;padding:6px 0 6px 10px;}
+.log-tl-label{font-size:12px;font-weight:600;color:var(--text);}
+.log-tl-value{font-size:11px;color:var(--muted);margin-top:1px;}
+.log-tl-duration{font-size:10px;font-family:'DM Mono',monospace;color:var(--muted2);margin-top:1px;}
+
 </style>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -150,6 +191,7 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--text);}
 </header>
 
 <div id="panel-board" class="panel active">
+  <div class="tech-load-bar" id="tech-load-bar"></div>
   <div class="section-title">ICU Grid <span id="count-icu">0/10</span></div>
   <div class="grid-icu" id="container-icu"></div>
 
@@ -162,22 +204,7 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--text);}
     <div class="section-title" style="margin:0;">Archived Patient Logs</div>
     <button class="btn btn-danger" style="padding:6px 12px; font-size:12px;" onclick="clearEntireLog()">Clear Log History</button>
   </div>
-  <div class="log-table-wrapper">
-    <table class="log-table">
-      <thead>
-        <tr>
-          <th>Logged At</th>
-          <th>Room</th>
-          <th>Patient</th>
-          <th>Owner</th>
-          <th>Reason</th>
-          <th>Estimate</th>
-          <th>Staff Assignment</th>
-        </tr>
-      </thead>
-      <tbody id="log-tbody"></tbody>
-    </table>
-  </div>
+  <div class="log-card-list" id="log-card-list"></div>
 </div>
 
 <div class="modal" id="modal-edit" onclick="if(event.target===this)closeModal()">
@@ -325,6 +352,7 @@ function renderBoard(){
 
   document.getElementById('count-icu').textContent = `${occIcu}/10`;
   document.getElementById('count-fo').textContent = `${occFo}/1`;
+  renderTechLoad();
 }
 
 function createCard(key, data, displayLabel){
@@ -400,38 +428,114 @@ function createCard(key, data, displayLabel){
   return card;
 }
 
+function fmtDur(ms){
+  if(!ms || ms < 0) return '';
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if(h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+function renderTechLoad(){
+  const bar = document.getElementById('tech-load-bar');
+  if(!bar) return;
+  const counts = {};
+  ICU_ROOMS.concat(FO_ROOMS).forEach(r => {
+    const d = rooms[r] || {};
+    if(d.name && d.tech){
+      const key = d.tech.trim().toUpperCase();
+      counts[key] = (counts[key] || 0) + 1;
+    }
+  });
+  bar.innerHTML = '';
+  if(Object.keys(counts).length === 0) return;
+  Object.entries(counts).sort((a,b) => b[1]-a[1]).forEach(([tech, count]) => {
+    const loadClass = count >= 3 ? 'load-3' : count === 2 ? 'load-2' : 'load-1';
+    const pill = document.createElement('div');
+    pill.className = `tech-pill ${loadClass}`;
+    pill.innerHTML = `<div class="tech-pill-avatar">${esc(tech.slice(0,2))}</div><span>${esc(tech)}</span><span class="tech-pill-count">${count}</span>`;
+    bar.appendChild(pill);
+  });
+}
+
+function tlRow(dotClass, label, value, time, prevTime, isLast){
+  const dur = (prevTime && time) ? fmtDur(time - prevTime) : '';
+  return `
+    <div class="log-tl-row">
+      <div class="log-tl-left"><span class="log-tl-time">${time ? fmtTime(time) : ''}</span></div>
+      <div class="log-tl-spine">
+        <div class="log-tl-dot ${dotClass}"></div>
+        ${isLast ? '' : '<div class="log-tl-line"></div>'}
+      </div>
+      <div class="log-tl-right">
+        <div class="log-tl-label">${label}${value ? ` <span style="font-weight:400;color:var(--muted);">${esc(value)}</span>` : ''}</div>
+        ${dur ? `<div class="log-tl-duration">+${dur} since previous</div>` : ''}
+      </div>
+    </div>`;
+}
+
 function renderLog(){
-  const tbody = document.getElementById('log-tbody');
-  tbody.innerHTML = '';
+  const list = document.getElementById('log-card-list');
+  list.innerHTML = '';
   
   const items = Object.entries(logs || {}).map(([id, val]) => ({ id, ...val }));
-  // Ported tracking utility feature sorting absolute timestamp chronological orders descending
   items.sort((a,b) => (b.loggedAt || 0) - (a.loggedAt || 0));
 
   if(items.length === 0){
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="text-align:center;">No history records archived yet.</td></tr>`;
+    list.innerHTML = `<div class="empty-state" style="min-height:120px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);">No history records archived yet.</div>`;
     return;
   }
 
   items.forEach(item => {
-    const tr = document.createElement('tr');
-    let staffStr = '—';
-    if(item.doctor && item.tech) staffStr = `DVM: ${esc(item.doctor)}<br>Tech: ${esc(item.tech)}`;
-    else if(item.doctor) staffStr = `DVM: ${esc(item.doctor)}`;
-    else if(item.tech) staffStr = `Tech: ${esc(item.tech)}`;
-
+    const admittedAt = item.admittedAt || null;
+    const techAt = item.techAt || null;
+    const doctorAt = item.doctorAt || null;
+    const loggedAt = item.loggedAt || null;
+    const totalMs = (admittedAt && loggedAt) ? (loggedAt - admittedAt) : null;
+    const over2h = totalMs && totalMs > 7200000;
     const rmDisplay = item.roomNum ? (item.roomNum.startsWith('FO') ? 'Comfort Rm' : `ICU ${item.roomNum}`) : '—';
 
-    tr.innerHTML = `
-      <td style="font-family:'DM Mono',monospace; white-space:nowrap;">${fmtDate(item.loggedAt)} ${fmtTime(item.loggedAt)}</td>
-      <td style="font-weight:600;">${rmDisplay}${item.logType==='dropoff'?'<br><span style="font-size:10px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:10px;padding:1px 6px;font-weight:600;">🚗 Drop Off</span>':''}</td>
-      <td style="font-weight:700; color:var(--text);">${esc(item.name)}</td>
-      <td>${item.owner ? esc(item.owner) : '—'}</td>
-      <td class="log-reason" title="${esc(item.reason || '')}">${item.reason ? esc(item.reason) : '—'}</td>
-      <td><span class="est-badge ${eC(item.estStatus)}">${eLabel(item.estStatus || 'pending')}</span></td>
-      <td style="font-size:12px; color:var(--muted);">${staffStr}</td>
+    // Build timeline rows
+    let tlHTML = '';
+    let prev = null;
+
+    if(admittedAt){
+      tlHTML += tlRow('active', 'Admitted', item.name || '', admittedAt, null, false);
+      prev = admittedAt;
+    }
+    if(techAt && item.tech){
+      tlHTML += tlRow('amber', 'Tech Assigned', item.tech, techAt, prev, false);
+      prev = techAt;
+    }
+    if(doctorAt && item.doctor){
+      tlHTML += tlRow('green', 'Doctor Assigned', item.doctor, doctorAt, prev, false);
+      prev = doctorAt;
+    }
+    const dischargeLabel = item.logType === 'dropoff' ? 'Drop Off' : 'Discharged';
+    if(loggedAt){
+      tlHTML += tlRow('red', dischargeLabel, '', loggedAt, prev, true);
+    }
+
+    const card = document.createElement('div');
+    card.className = `log-card ${over2h ? 'over-2h' : ''}`;
+    card.innerHTML = `
+      <div class="log-card-header">
+        <div class="log-card-patient">
+          <div class="log-card-name">${esc(item.name || '—')}</div>
+          <div class="log-card-meta">${item.owner ? esc(item.owner) + ' · ' : ''}${item.reason ? esc(item.reason) : ''}</div>
+        </div>
+        <div class="log-card-badges">
+          <span class="log-card-room">${rmDisplay}</span>
+          <span class="est-badge ${eC(item.estStatus)}">${eLabel(item.estStatus||'pending')}</span>
+          ${over2h ? '<span class="over-2h-flag">OVER 2H</span>' : ''}
+          ${item.logType==='dropoff' ? '<span class="dropoff-flag">🚗 Drop Off</span>' : ''}
+          ${totalMs ? `<span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">${fmtDur(totalMs)} total</span>` : ''}
+        </div>
+      </div>
+      <div class="log-timeline">${tlHTML}</div>
     `;
-    tbody.appendChild(tr);
+    list.appendChild(card);
   });
 }
 
