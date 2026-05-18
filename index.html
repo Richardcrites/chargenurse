@@ -193,10 +193,10 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--text);}
 
 <div id="panel-board" class="panel active">
   <div class="tech-load-bar" id="tech-load-bar"></div>
-  <div class="section-title">ICU Grid <span id="count-icu">0/10</span></div>
+  <div class="section-title">Exam Rooms <span id="count-icu">0/10</span></div>
   <div class="grid-icu" id="container-icu"></div>
 
-  <div class="section-title">Comfort Room <span id="count-fo">0/1</span></div>
+  <div class="section-title">Front Office <span id="count-fo">0/1</span></div>
   <div class="grid-fo" id="container-fo" style="grid-template-columns:1fr;max-width:340px;"></div>
 </div>
 
@@ -336,14 +336,14 @@ function renderBoard(){
   ICU_ROOMS.forEach(r => {
     const data = rooms[r] || {};
     if(data.name) occIcu++;
-    icuRoot.appendChild(createCard(r, data, `ICU ${r}`));
+    icuRoot.appendChild(createCard(r, data, `Exam ${r}`));
   });
 
   // Render Expanded Front Office Grid Row Cells
   FO_ROOMS.forEach(r => {
     const data = rooms[r] || {};
     if(data.name) occFo++;
-    foRoot.appendChild(createCard(r, data, 'Comfort'));
+    foRoot.appendChild(createCard(r, data, 'Front Office'));
   });
 
   document.getElementById('count-icu').textContent = `${occIcu}/10`;
@@ -490,7 +490,7 @@ function renderLog(){
     const loggedAt = item.loggedAt || null;
     const totalMs = (admittedAt && loggedAt) ? (loggedAt - admittedAt) : null;
     const over2h = totalMs && totalMs > 7200000;
-    const rmDisplay = item.roomNum ? (item.roomNum.startsWith('FO') ? 'Comfort Rm' : `ICU ${item.roomNum}`) : '—';
+    const rmDisplay = item.roomNum ? (item.roomNum.startsWith('FO') ? 'Front Office' : `Exam ${item.roomNum}`) : '—';
 
     // Build timeline rows
     let tlHTML = '';
@@ -541,7 +541,7 @@ function openModal(key){
   activeRoomKey = key;
   const data = rooms[key] || {};
   const isFO = key.startsWith('FO');
-  const label = isFO ? 'Comfort Room' : `ICU Room ${key}`;
+  const label = isFO ? 'Front Office' : `Exam Room ${key}`;
   
   document.getElementById('modal-room-title').textContent = label;
   document.getElementById('input-name').value = data.name || '';
