@@ -746,7 +746,7 @@ db.ref(`${FB_PATH}/log`).on('value', snap => {
   if(document.getElementById('panel-log').classList.contains('active')) renderLog();
 });
   
-  // ── AUTOSCROLL ────────────────────────────────────────────────────────────
+// ── AUTOSCROLL ────────────────────────────────────────────────────────────
 let scrollInterval = null;
 function startAutoScroll() {
   scrollInterval = setInterval(() => {
