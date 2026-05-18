@@ -745,25 +745,6 @@ db.ref(`${FB_PATH}/log`).on('value', snap => {
   logs = snap.val() || {};
   if(document.getElementById('panel-log').classList.contains('active')) renderLog();
 });
-  
-// ── AUTOSCROLL ────────────────────────────────────────────────────────────
-let scrollInterval = null;
-function startAutoScroll() {
-  scrollInterval = setInterval(() => {
-    if (editMode) return;
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-    if (window.scrollY >= maxScroll - 1) {
-      clearInterval(scrollInterval);
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        setTimeout(startAutoScroll, 2000);
-      }, 5000);
-    } else {
-      window.scrollBy(0, 1);
-    }
-  }, 50);
-}
-startAutoScroll();
 </script>
 </body>
 </html>
