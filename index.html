@@ -57,6 +57,9 @@ h1{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;letter-spacing:-
 .es{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
 .eu{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border);}
 .ex{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border);font-weight:700;}
+.ed{background:#ecfeff;color:#0e7490;border:1px solid #a5f3fc;}
+.et{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border);}
+.ef{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);font-weight:700;}
 
 .card-body{display:flex;flex-direction:column;gap:2px;flex-grow:1;}
 .patient-name{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;letter-spacing:-0.3px;}
@@ -132,6 +135,21 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--text);}
 .btn-remove-pt:hover{color:var(--red);}
 .btn-add-pt{background:var(--bg);border:1px dashed var(--border);color:var(--muted);font-size:12px;font-weight:600;padding:7px;border-radius:var(--radius-sm);cursor:pointer;width:100%;transition:all 0.15s;}
 .btn-add-pt:hover{border-color:var(--text);color:var(--text);}
+/* ── NEXT UP QUEUE STRIP ─────────────────── */
+.queue-strip{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.queue-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;display:flex;align-items:center;gap:10px;flex:1;min-width:180px;max-width:280px;position:relative;overflow:hidden;}
+.queue-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber);}
+.queue-pos{font-family:'DM Mono',monospace;font-size:11px;font-weight:700;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-border);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.queue-info{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.queue-name{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.queue-sub{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.queue-euth{background:var(--purple-bg);border-color:var(--purple-border);}
+.queue-euth::before{background:var(--purple);}
+.queue-euth .queue-pos{color:var(--purple);background:var(--purple-bg);border-color:var(--purple-border);}
+.queue-strip-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;align-self:center;white-space:nowrap;}
+.queue-empty{font-size:12px;color:var(--muted2);font-style:italic;padding:8px 0;}
+.queue-wait{font-family:'DM Mono',monospace;font-size:10px;font-weight:700;color:var(--muted);background:var(--surface2);padding:2px 6px;border-radius:10px;white-space:nowrap;flex-shrink:0;margin-left:auto;}
+
 /* ── TECH LOAD BAR ───────────────────────── */
 .tech-load-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;min-height:0;}
 .tech-pill{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 8px;font-size:12px;font-weight:600;font-family:'DM Mono',monospace;transition:all 0.2s;}
@@ -192,6 +210,7 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--text);}
 </header>
 
 <div id="panel-board" class="panel active">
+  <div class="queue-strip" id="queue-strip"></div>
   <div class="tech-load-bar" id="tech-load-bar"></div>
   <div class="section-title">Exam Rooms <span id="count-icu">0/10</span></div>
   <div class="grid-icu" id="container-icu"></div>
@@ -244,9 +263,11 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--text);}
           <label>Estimate Status</label>
           <select id="select-status">
             <option value="pending">⏳ Pending</option>
-            <option value="progress">📝 In Progress</option>
+            <option value="ready">📋 Estimate Ready</option>
             <option value="signed">✅ Signed</option>
-            <option value="updated">🔄 Updated</option>
+            <option value="diag">🔬 Diagnostics Finished</option>
+            <option value="treat">💊 Treatments Finished</option>
+            <option value="discharge">🏠 Ready for Discharge</option>
             <option value="euth">💜 Euthanasia</option>
           </select>
         </div>
@@ -324,6 +345,46 @@ tick();
 setInterval(tick, 1000);
 
 // ── RENDERING ENGINES ─────────────────────
+function renderQueue(queueData){
+  const strip = document.getElementById('queue-strip');
+  if(!strip) return;
+  strip.innerHTML = '';
+
+  const list = Array.isArray(queueData) ? queueData : Object.values(queueData || {});
+  if(list.length === 0){
+    strip.innerHTML = '<span class="queue-empty">Queue empty</span>';
+    return;
+  }
+
+  const label = document.createElement('span');
+  label.className = 'queue-strip-label';
+  label.textContent = '⏳ Next Up';
+  strip.appendChild(label);
+
+  list.slice(0, 3).forEach((p, i) => {
+    const card = document.createElement('div');
+    card.className = 'queue-card' + (p.isEuth ? ' queue-euth' : '');
+    // Position number (1-based)
+    const pos = i + 1;
+    // Sub: owner · chief concern (trimmed to keep compact)
+    const concern = p.reason ? p.reason.slice(0, 60) + (p.reason.length > 60 ? '…' : '') : '';
+    const sub = [p.owner, concern].filter(Boolean).join(' · ');
+    // Wait time badge
+    const waitHTML = p.waitMin
+      ? `<div class="queue-wait">${esc(p.waitMin)}</div>`
+      : '';
+    card.innerHTML = `
+      <div class="queue-pos">${pos}</div>
+      <div class="queue-info">
+        <div class="queue-name">${esc(p.name)}</div>
+        ${sub ? `<div class="queue-sub">${esc(sub)}</div>` : ''}
+      </div>
+      ${waitHTML}
+    `;
+    strip.appendChild(card);
+  });
+}
+
 function renderBoard(){
   let occIcu = 0, occFo = 0;
   const icuRoot = document.getElementById('container-icu');
@@ -672,7 +733,9 @@ function clearRoom(logType){
       history: logHistory
     };
 
-    db.ref(`${FB_PATH}/log`).push(archiveItem);
+    // Deterministic key so ICU board dedup (chargeLogId) never double-imports
+    const dedupKey = (existing.admittedAt || Date.now()).toString(36) + '_' + (existing.name||'unk').replace(/[^a-zA-Z0-9]/g,'').toLowerCase().slice(0,12);
+    db.ref(`${FB_PATH}/log/${dedupKey}`).set(archiveItem);
   }
 
   db.ref(`${FB_PATH}/rooms/${activeRoomKey}`).set(null, () => {
@@ -687,8 +750,8 @@ function clearEntireLog(){
 }
 
 // ── SYSTEM COMPLIANCE PARSERS ─────────────
-function eC(v){ return {pending:'ep',progress:'ei',signed:'es',updated:'eu',euth:'ex'}[v]||'ep'; }
-function eLabel(v){ return {pending:'⏳ Pending',progress:'📝 In Progress',signed:'✅ Signed',updated:'🔄 Updated',euth:'💜 Euth'}[v]||'—'; }
+function eC(v){ return {pending:'ep',ready:'ei',signed:'es',diag:'ed',treat:'et',discharge:'ef',euth:'ex'}[v]||'ep'; }
+function eLabel(v){ return {pending:'⏳ Pending',ready:'📋 Est. Ready',signed:'✅ Signed',diag:'🔬 Diag Done',treat:'💊 Tx Done',discharge:'🏠 Discharge',euth:'💜 Euth'}[v]||'—'; }
 function rsLabel(v){ return {doctor_starting:'Doctor Starting',ready_for_doctor:'Ready for Doctor'}[v]||''; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtTime(ts){ if(!ts) return '—'; const d=new Date(ts); return d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }
@@ -739,6 +802,10 @@ db.ref(`${FB_PATH}/rooms`).on('value', snap => {
   
   // Refresh modal if opened on live tracking sync updates
   if(activeRoomKey) openModal(activeRoomKey);
+});
+
+db.ref('cb2/queue').on('value', snap => {
+  renderQueue(snap.val() || []);
 });
 
 db.ref(`${FB_PATH}/log`).on('value', snap => {
